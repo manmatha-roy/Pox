@@ -373,7 +373,7 @@ class Switch (EventMixin):
 
 
     if packet.dst.is_multicast:
-      #log.debug("Flood multicast from %s", packet.src)
+      log.debug("Flood multicast from %s", packet.src)
       flood()
     else:
       if packet.dst not in mac_map:
