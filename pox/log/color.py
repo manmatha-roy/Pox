@@ -27,7 +27,7 @@ LEVEL_COLORS = {
 }
 
 # Will get set to True if module is initialized
-enabled = False
+enabled = True
 
 # Gets set to True if we should strip special sequences but
 # not actually try to colorize
