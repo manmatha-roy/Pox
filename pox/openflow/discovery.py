@@ -298,7 +298,7 @@ class Discovery (EventMixin):
   def _handle_openflow_ConnectionUp (self, event):
     if self._install_flow:
       # Make sure we get appropriate traffic
-      log.debug("Installing flow for %s", dpid_to_str(event.dpid))
+      #log.debug("Installing flow for %s", dpid_to_str(event.dpid))
       self.install_flow(event.connection)
 
   def _handle_openflow_ConnectionDown (self, event):
@@ -339,7 +339,7 @@ class Discovery (EventMixin):
 
     if self._explicit_drop:
       if event.ofp.buffer_id is not None:
-        log.debug("Dropping LLDP packet %i", event.ofp.buffer_id)
+        #log.debug("Dropping LLDP packet %i", event.ofp.buffer_id)
         msg = of.ofp_packet_out()
         msg.buffer_id = event.ofp.buffer_id
         msg.in_port = event.port
@@ -440,7 +440,7 @@ class Discovery (EventMixin):
 
     if link not in self.adjacency:
       self.adjacency[link] = time.time()
-      log.info('link detected: %s', link)
+      #log.info('link detected: %s', link)
       self.raiseEventNoErrors(LinkEvent, True, link)
     else:
       # Just update timestamp

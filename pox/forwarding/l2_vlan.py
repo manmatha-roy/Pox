@@ -202,7 +202,7 @@ class WaitingPath (object):
             action=of.ofp_action_output(port=of.OFPP_TABLE))
         core.openflow.sendToDPID(self.first_switch, msg)
 
-      core.l2_multi.raiseEvent(PathInstalled(self.path))
+      core.l2_vlan.raiseEvent(PathInstalled(self.path))
 
 
   @staticmethod
@@ -234,6 +234,7 @@ class Switch (EventMixin):
     self.dpid = None
     self._listeners = None
     self._connected_at = None
+    self.vlan_tag = defaultdict(lambda:200)
 
   def __repr__ (self):
     return dpid_to_str(self.dpid)
@@ -313,34 +314,44 @@ class Switch (EventMixin):
 
 
   def _handle_PacketIn (self, event):
+    
     packet = event.parsed
+    msg = of.ofp_packet_out()
+    msg.buffer_id = event.ofp.buffer_id
+    msg.in_port = event.port
+    
+    origin_switch = 'FALSE'
+
     def flood ():
       """ Floods the packet """
       if self.is_holding_down:
         log.warning("Not flooding -- holddown active")
-      msg = of.ofp_packet_out()
       
 
-      print LLDPSender.per_switch_port_list[self.dpid]
-      for port_num in LLDPSender.per_switch_port_list[self.dpid]:
-	if core.openflow_discovery.is_edge_port(self.dpid, event.port):
-		if packet.effective_ethertype == LLDPSender.vlan_tag_list[(self.dpid, event.port)]:
-			msg.actions.append(of.ofp_actions_output(port = port_num))
-			log.debug("Switch %s Edge Port %i VLAN Matched Flooding", self.dpid, event.port)
-	else:
-		msg.actions.append(of.ofp_action_output(port = port_num))
-		log.debug("Switch %s Intermediate Port %i Flooding", self.dpid, event.port)
+      if(origin_switch == 'FALSE'):
+        vbuf = packet.find('vlan')
+	if vbuf is not None:
+	  print vbuf.id
+	  tag = vbuf.id
+        else:
+	  tag = self.vlan_tag[(self.dpid, event.port)]
+      else:
+        tag = self.vlan_tag[(self.dpid, event.port)]
+      for p in self.ports:
+	if p.port_no != event.port:
+	   if core.openflow_discovery.is_edge_port(self.dpid, p.port_no):
+	      if (tag == self.vlan_tag[(self.dpid, p.port_no)]):
+	       	 msg.actions.append(of.ofp_action_output(port = int(p.port_no)))
+		 log.debug("Switch %s Edge Port %i VLAN Matched Flooding", self.dpid, p.port_no)
+	      else:
+		print "VLAN tag not found"
+	   else:
+	      msg.actions.append(of.ofp_action_output(port = int(p.port_no)))
+	      log.debug("Switch %s Intermediate Port %i Flooding", self.dpid, p.port_no)
       
-      msg.buffer_id = event.ofp.buffer_id
-      msg.in_port = event.port
-      #self.connection.send(msg)
       
-      msg1 = of.ofp_packet_out();
-      msg1.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
-      msg1.buffer_id = event.ofp.buffer_id
-      msg1.in_port = event.port
-      self.connection.send(msg1)
-
+      #msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+      self.connection.send(msg)
     def drop ():
       # Kill the buffer
       if event.ofp.buffer_id is not None:
@@ -389,13 +400,12 @@ class Switch (EventMixin):
 
      
     if core.openflow_discovery.is_edge_port(self.dpid, event.port):
-	msg = of.ofp_packet_out()
-	#msg.actions.append(of.ofp_action_vlan_vid(vlan_vid = core.openflow_discovery.vlan_tag_list(self.dpid, event.port)))
-        msg.buffer_id = event.ofp.buffer_id
-        msg.in_port = event.port
-        #self.connection.send(msg)
+	print "Tagging VLAN on Edge"
+	print int(self.vlan_tag[(self.dpid, event.port)])
+        origin_switch = 'TRUE'
+	msg.actions.append(of.ofp_action_vlan_vid(vlan_vid = int(self.vlan_tag[(self.dpid, event.port)])))
     if packet.dst.is_multicast:
-      log.debug("Flood multicast from %s", packet.src)
+      #log.debug("Flood multicast from %s", packet.src)
       flood()
     else:
       if packet.dst not in mac_map:
@@ -405,6 +415,7 @@ class Switch (EventMixin):
         dest = mac_map[packet.dst]
         match = of.ofp_match.from_packet(packet)
         self.install_path(dest[0], dest[1], match, event)
+	#flood()
 
   def disconnect (self):
     if self.connection is not None:
@@ -413,14 +424,28 @@ class Switch (EventMixin):
       self.connection = None
       self._listeners = None
 
+
+  def assign_vlan_tag(self, port_num):
+    with open('vlan_config.txt', 'r') as in_file:
+      data = in_file.read()
+      lines = data.splitlines()
+      for line in lines:
+        switch_id, port_id = line.split(':')
+	if(int(switch_id) == int(self.dpid)):
+	   if(int(port_id) == int(port_num)):
+	      self.vlan_tag[(self.dpid, port_num)] = 300
+	      break
+
   def connect (self, connection):
     if self.dpid is None:
       self.dpid = connection.dpid
     assert self.dpid == connection.dpid
-    if self.ports is None:
-      self.ports = connection.features.ports
+    #if self.ports is None:
+    self.ports = connection.features.ports
+    for p in self.ports:
+	self.assign_vlan_tag(p.port_no)
     self.disconnect()
-    log.debug("Connect %s" % (connection,))
+    #log.debug("Connect %s" % (connection,))
     self.connection = connection
     self._listeners = self.listenTo(connection)
     self._connected_at = time.time()
@@ -436,7 +461,7 @@ class Switch (EventMixin):
     self.disconnect()
 
 
-class l2_multi (EventMixin):
+class l2_vlan (EventMixin):
 
   _eventMixin_events = set([
     PathInstalled,
@@ -525,7 +550,7 @@ class l2_multi (EventMixin):
 
 
 def launch ():
-  core.registerNew(l2_multi)
+  core.registerNew(l2_vlan)
 
   timeout = min(max(PATH_SETUP_TIME, 5) * 2, 15)
   Timer(timeout, WaitingPath.expire_waiting_paths, recurring=True)
