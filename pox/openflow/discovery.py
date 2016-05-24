@@ -317,7 +317,7 @@ class Discovery (EventMixin):
   def _handle_openflow_ConnectionUp (self, event):
     if self._install_flow:
       # Make sure we get appropriate traffic
-      log.debug("Installing flow for %s", dpid_to_str(event.dpid))
+      #log.debug("Installing flow for %s", dpid_to_str(event.dpid))
       self.install_flow(event.connection)
 
   def _handle_openflow_ConnectionDown (self, event):
