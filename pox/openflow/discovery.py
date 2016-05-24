@@ -32,12 +32,11 @@ import pox.lib.packet as pkt
 
 import struct
 import time
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from random import shuffle, random
 
 
 log = core.getLogger()
-
 
 class LLDPSender (object):
   """
@@ -119,6 +118,7 @@ class LLDPSender (object):
     self.del_port(dpid, port_num, set_timer = False)
     self._next_cycle.append(LLDPSender.SendItem(dpid, port_num,
           self.create_discovery_packet(dpid, port_num, port_addr)))
+
     if set_timer: self._set_timer()
 
   def _set_timer (self):
