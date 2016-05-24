@@ -32,12 +32,11 @@ import pox.lib.packet as pkt
 
 import struct
 import time
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from random import shuffle, random
 
 
 log = core.getLogger()
-
 
 class LLDPSender (object):
   """
@@ -52,6 +51,8 @@ class LLDPSender (object):
 
   # Maximum times to run the timer per second
   _sends_per_sec = 15
+  per_switch_port_list = defaultdict(list)
+  vlan_tag_list = {}
 
   def __init__ (self, send_cycle_time, ttl = 120):
     """
@@ -78,6 +79,17 @@ class LLDPSender (object):
     self._ttl = ttl
     self._send_cycle_time = send_cycle_time
     core.listen_to_dependencies(self)
+
+  def get_vlan_tag_config(self, dpid, port_num):
+    with open('vlan_config.txt' , 'r') as infile:
+      data = infile.read()
+      config_list = data.splitlines()
+      for line in config_list:
+          buffer = line.split(':')
+  #       print(buffer)
+	  if (buffer[0] == dpid) and (buffer[1] == port_num):
+	    return 3	   
+    return 2
 
   def _handle_openflow_PortStatus (self, event):
     """
@@ -119,6 +131,13 @@ class LLDPSender (object):
     self.del_port(dpid, port_num, set_timer = False)
     self._next_cycle.append(LLDPSender.SendItem(dpid, port_num,
           self.create_discovery_packet(dpid, port_num, port_addr)))
+
+    if port_num not in self.per_switch_port_list[dpid]:
+	self.per_switch_port_list[dpid].append(port_num)
+    #print per_switch_port_list
+
+    self.vlan_tag_list[(dpid, port_num) ] = self.get_vlan_tag_config(dpid, port_num)
+
     if set_timer: self._set_timer()
 
   def _set_timer (self):
@@ -339,7 +358,7 @@ class Discovery (EventMixin):
 
     if self._explicit_drop:
       if event.ofp.buffer_id is not None:
-        log.debug("Dropping LLDP packet %i", event.ofp.buffer_id)
+        #log.debug("Dropping LLDP packet %i", event.ofp.buffer_id)
         msg = of.ofp_packet_out()
         msg.buffer_id = event.ofp.buffer_id
         msg.in_port = event.port
@@ -440,7 +459,7 @@ class Discovery (EventMixin):
 
     if link not in self.adjacency:
       self.adjacency[link] = time.time()
-      log.info('link detected: %s', link)
+      #log.info('link detected: %s', link)
       self.raiseEventNoErrors(LinkEvent, True, link)
     else:
       # Just update timestamp
