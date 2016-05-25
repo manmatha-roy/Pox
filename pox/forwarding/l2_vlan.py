@@ -331,23 +331,22 @@ class Switch (EventMixin):
       if(origin_switch == 'FALSE'):
         vbuf = packet.find('vlan')
 	if vbuf is not None:
-	  print vbuf.id
 	  tag = vbuf.id
         else:
 	  tag = self.vlan_tag[(self.dpid, event.port)]
       else:
         tag = self.vlan_tag[(self.dpid, event.port)]
       for p in self.ports:
-	if p.port_no != event.port:
+	if (p.port_no != of.OFPP_LOCAL)and (p.port_no != event.port):
 	   if core.openflow_discovery.is_edge_port(self.dpid, p.port_no):
 	      if (tag == self.vlan_tag[(self.dpid, p.port_no)]):
 	       	 msg.actions.append(of.ofp_action_output(port = int(p.port_no)))
-		 log.debug("Switch %s Edge Port %i VLAN Matched Flooding", self.dpid, p.port_no)
-	      else:
-		print "VLAN tag not found"
+		 #log.debug("Switch %s Edge Port %i VLAN Matched Flooding", self.dpid, p.port_no)
+	      #else:
+		#print "VLAN tag not found"
 	   else:
 	      msg.actions.append(of.ofp_action_output(port = int(p.port_no)))
-	      log.debug("Switch %s Intermediate Port %i Flooding", self.dpid, p.port_no)
+	      #log.debug("Switch %s Intermediate Port %i Flooding", self.dpid, p.port_no)
       
       
       #msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
@@ -400,8 +399,8 @@ class Switch (EventMixin):
 
      
     if core.openflow_discovery.is_edge_port(self.dpid, event.port):
-	print "Tagging VLAN on Edge"
-	print int(self.vlan_tag[(self.dpid, event.port)])
+	#print "Tagging VLAN on Edge"
+	#print int(self.vlan_tag[(self.dpid, event.port)])
         origin_switch = 'TRUE'
 	msg.actions.append(of.ofp_action_vlan_vid(vlan_vid = int(self.vlan_tag[(self.dpid, event.port)])))
     if packet.dst.is_multicast:
@@ -415,7 +414,6 @@ class Switch (EventMixin):
         dest = mac_map[packet.dst]
         match = of.ofp_match.from_packet(packet)
         self.install_path(dest[0], dest[1], match, event)
-	#flood()
 
   def disconnect (self):
     if self.connection is not None:

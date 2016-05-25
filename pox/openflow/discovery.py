@@ -51,8 +51,6 @@ class LLDPSender (object):
 
   # Maximum times to run the timer per second
   _sends_per_sec = 15
-  per_switch_port_list = defaultdict(list)
-  vlan_tag_list = {}
 
   def __init__ (self, send_cycle_time, ttl = 120):
     """
@@ -79,17 +77,6 @@ class LLDPSender (object):
     self._ttl = ttl
     self._send_cycle_time = send_cycle_time
     core.listen_to_dependencies(self)
-
-  def get_vlan_tag_config(self, dpid, port_num):
-    with open('vlan_config.txt' , 'r') as infile:
-      data = infile.read()
-      config_list = data.splitlines()
-      for line in config_list:
-          buffer = line.split(':')
-  #       print(buffer)
-	  if (buffer[0] == dpid) and (buffer[1] == port_num):
-	    return 3	   
-    return 2
 
   def _handle_openflow_PortStatus (self, event):
     """
@@ -131,12 +118,6 @@ class LLDPSender (object):
     self.del_port(dpid, port_num, set_timer = False)
     self._next_cycle.append(LLDPSender.SendItem(dpid, port_num,
           self.create_discovery_packet(dpid, port_num, port_addr)))
-
-    if port_num not in self.per_switch_port_list[dpid]:
-	self.per_switch_port_list[dpid].append(port_num)
-    #print per_switch_port_list
-
-    self.vlan_tag_list[(dpid, port_num) ] = self.get_vlan_tag_config(dpid, port_num)
 
     if set_timer: self._set_timer()
 
