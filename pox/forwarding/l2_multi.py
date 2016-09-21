@@ -196,8 +196,8 @@ class WaitingPath (object):
     if len(self.xids) == 0:
       # Done!
       if self.packet:
-        log.debug("Sending delayed packet out %s"
-                  % (dpid_to_str(self.first_switch),))
+        #log.debug("Sending delayed packet out %s"
+        #          % (dpid_to_str(self.first_switch),))
         msg = of.ofp_packet_out(data=self.packet,
             action=of.ofp_action_output(port=of.OFPP_TABLE))
         core.openflow.sendToDPID(self.first_switch, msg)
@@ -373,7 +373,7 @@ class Switch (EventMixin):
 
 
     if packet.dst.is_multicast:
-      log.debug("Flood multicast from %s", packet.src)
+      #log.debug("Flood multicast from %s", packet.src)
       flood()
     else:
       if packet.dst not in mac_map:
