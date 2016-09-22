@@ -106,13 +106,13 @@ def _calc_spanning_tree ():
       tree[w].add((v,adj[w][v]))
 
   if False:
-    log.debug("*** SPANNING TREE ***")
+    #log.debug("*** SPANNING TREE ***")
     for sw,ports in tree.iteritems():
-      #print " ", dpidToStr(sw), ":", sorted(list(ports))
-      #print " ", sw, ":", [l[0] for l in sorted(list(ports))]
+      print " ", dpidToStr(sw), ":", sorted(list(ports))
+      print " ", sw, ":", [l[0] for l in sorted(list(ports))]
       log.debug((" %i : " % sw) + " ".join([str(l[0]) for l in
                                            sorted(list(ports))]))
-    log.debug("*********************")
+    #log.debug("*********************")
 
   return tree
 
@@ -176,7 +176,7 @@ def _update_tree (force_dpid = None):
 
   # Get a spanning tree
   tree = _calc_spanning_tree()
-  log.debug("Spanning tree updated")
+  #log.debug("Spanning tree updated")
 
   # Connections born before this time are old enough that a complete
   # discovery cycle should have completed (and, thus, all of their
@@ -212,7 +212,7 @@ def _update_tree (force_dpid = None):
             continue # Skip
           change_count += 1
           _prev[sw][p.port_no] = flood
-          #print sw,p.port_no,flood
+          print sw,p.port_no,flood
           #TODO: Check results
 
           pm = of.ofp_port_mod(port_no=p.port_no,
@@ -222,8 +222,8 @@ def _update_tree (force_dpid = None):
           con.send(pm)
 
           _invalidate_ports(con.dpid)
-    if change_count:
-      log.info("%i ports changed", change_count)
+    #if change_count:
+     # log.info("%i ports changed", change_count)
   except:
     _prev.clear()
     log.exception("Couldn't push spanning tree")
@@ -261,7 +261,7 @@ def _check_ports (dpid):
   if con is None: return
   con.send(of.ofp_barrier_request())
   con.send(of.ofp_features_request())
-  log.debug("Requested switch features for %s", str(con))
+  #log.debug("Requested switch features for %s", str(con))
 
 
 def launch (no_flood = False, hold_down = False):

@@ -480,7 +480,7 @@ class l2_multi (EventMixin):
         if sw is sw1 and port == l.port1: bad_macs.add(mac)
         if sw is sw2 and port == l.port2: bad_macs.add(mac)
       for mac in bad_macs:
-        log.debug("Unlearned %s", mac)
+        #log.debug("Unlearned %s", mac)
         del mac_map[mac]
 
   def _handle_ConnectionUp (self, event):
